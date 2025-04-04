@@ -4,6 +4,7 @@
 #include "coroutine_pool/scheduler.h"
 
 thread_local coro_yield_t yield{};
+//初始化工作线程数,为每个线程创建调度器(Scheduler),预分配空间提高性能
 CoroutinePool::CoroutinePool(int thread_num, int coroutine_per_thread) : worker_num_(thread_num) {
   schedulers_.reserve(thread_num);
   for (int i = 0; i < thread_num; i++) {

@@ -18,6 +18,7 @@ class CoroutinePool {
   ~CoroutinePool();
 
   void enqueue(CoroutineTask &&task) {
+    //使用原子计数器实现轮询分发,std::memory_order_relaxed保证基本原子性，性能更高
     uint32_t cur = idx.fetch_add(1, std::memory_order_relaxed);
     schedulers_[cur % worker_num_]->addTask(std::move(task));
   }

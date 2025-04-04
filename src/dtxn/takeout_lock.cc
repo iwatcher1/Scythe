@@ -8,29 +8,55 @@
 #include "rrpc/rrpc.h"
 #include "util/logging.h"
 
+DynamicWatermark g_watermark;
+
+//"票号+时间戳"混合排队机制
 LockReply TakeoutLock::Lock(timestamp_t ts, Mode mode) {
   timestamp_t old_queued_ts;
   TakeoutLock tmp;
+  //记录开始时间
+  const uint64_t start_time = RdtscTimer::instance().us();
+  //获取当前动态水位值
+  const uint32_t current_cold = g_watermark.get_cold();
+  const uint32_t current_hot = g_watermark.get_hot();
+ //一次计算即可
+  auto CurrentQueuedTxnNum = queued_num();
   do {
-    auto CurrentQueuedTxnNum = queued_num();
+     // 每次循环重新计算当前排队数: lower - upper
+    //auto CurrentQueuedTxnNum = queued_num();
     // try to take a ticket
     old_queued_ts = queued_ts;
+    // 时间戳检查 新事务的时间戳必须 ≥ 队列中最早事务的时间戳, 防止时间戳较小的事务插队
+    //冷热模式检查
     if ((ts < old_queued_ts) || (mode == Mode::COLD && CurrentQueuedTxnNum > kColdWatermark) ||
         (CurrentQueuedTxnNum > kHotWatermark)) {
       return {false, *this, reinterpret_cast<uint64_t>(this)};
     }
     tmp = *this;
+    //原子排队操作
   } while (!__atomic_compare_exchange_n(&queued_ts, &old_queued_ts, ts, true, __ATOMIC_ACQ_REL, __ATOMIC_ACQUIRE));
-  // update lock state
+  // update lock state，即为票号加1操作
   __atomic_fetch_add(&lower, 1, __ATOMIC_RELAXED);
+ //记录等待时间用于动态调整
+ if(mode == Mode::COLD){
+    g_watermark::update(RdtscTimer::instance().us()-start_time);
+ }
+
   return {true, tmp, reinterpret_cast<uint64_t>(this)};
 }
-
+//锁状态轮询
 void TakeoutLockProxy::poll_lock() {
+  const uint64_t start_time = RdtscTimer::instance().us();
+
   auto rkt = GetRocket(0);
   auto *ctx = new PollLockCtx{getShared()};
   auto rc =
-      rkt->remote_read(&tl.upper, sizeof(uint64_t), lock_addr + OFFSET(TakeoutLock, upper), rkey, poll_lock_cb, ctx);
+      rkt->remote_read(&tl.upper, sizeof(uint64_t), lock_addr + OFFSET(TakeoutLock, upper), rkey,
+                      [start_time](void* ctx){
+                          //回调中记录等待时间
+                          g_watermark.update(RdtscTimer::instance().us()-start_time);
+                          poll_lock_cb(ctx);                                                                     
+      } , ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);
 };
 
@@ -42,3 +68,4 @@ void TakeoutLockProxy::unlock() {
       rkt->remote_fetch_add(nullptr, sizeof(uint64_t), lock_addr + OFFSET(TakeoutLock, upper), rkey, 1, unlock_cb, ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA fetch add failed, %d", (int)rc);
 };
+

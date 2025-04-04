@@ -44,6 +44,7 @@ class Scheduler {
   volatile bool stop = false;
   int coro_num_;
 
+  //任务队列
   TaskQueue queue_;
   CoroutineTask task_buf_[kTaskBufLen];
   int task_cnt_{0};
@@ -54,8 +55,9 @@ class Scheduler {
   std::list<Coroutine *> runnable_list_;
   std::list<Coroutine *> waiting_list_;
 
+  //唤醒队列
   moodycamel::ConcurrentQueue<Coroutine *> wakeup_list_;
   Coroutine **wakeup_buf_;
-  // ------------------------------
+  //事件队列
   std::priority_queue<TLP, std::vector<TLP>, TakeoutLockProxy::Compare> events_;
 };
