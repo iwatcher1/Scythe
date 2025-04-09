@@ -12,6 +12,13 @@ using data_t = char;
 #define MB(x) ((x)*1024 * 1024ul)
 #define GB(x) ((x)*1024 * 1024 * 1024ul)
 #define OFFSET(TYPE, MEMBER) ((unsigned long)(&(((TYPE *)0)->MEMBER)))
+//pause解决
+#if defined(__x86_64__) || defined(__i386__)
+    #define CPU_PAUSE() asm volatile("pause" ::: "memory")
+#else
+    // 其他架构的回退方案
+    #define CPU_PAUSE() asm volatile("" ::: "memory") 
+#endif
 
 constexpr timestamp_t LATEST = ~0ull;
 constexpr uint16_t kColdWatermark = 3;

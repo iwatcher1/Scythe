@@ -2,7 +2,7 @@
 
 #include <pthread.h>
 #include <unistd.h>
-
+#include "common.h"
 #include <atomic>
 #include <cstdint>
 #define cpu_relax() asm volatile("pause\n" : : : "memory")
@@ -42,7 +42,8 @@ static inline void AsmVolatilePause() {
 #if defined(__i386__) || defined(__x86_64__)
   asm volatile("pause");
 #elif defined(__aarch64__)
-  asm volatile("isb");
+  //asm volatile("isb");
+  CPU_PAUSE();
 #elif defined(__powerpc64__)
   asm volatile("or 27,27,27");
 #endif

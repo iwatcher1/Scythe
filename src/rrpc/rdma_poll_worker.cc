@@ -18,7 +18,8 @@ bool PollWorker::ctrl_add_rocket(Rocket* rocket) {
 void PollWorker::worker_job() {
   while (running_) {
     if (current_ == 0) {
-      asm volatile("pause\n" : : : "memory");
+      //asm volatile("pause\n" : : : "memory");
+      CPU_PAUSE();
       continue;
     }
     // printf("[PollWorker] thread-%lu start\n", pthread_self());
