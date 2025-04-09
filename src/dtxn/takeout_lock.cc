@@ -64,7 +64,7 @@ void TakeoutLockProxy::poll_lock() {
             lock_addr + OFFSET(TakeoutLock, upper), 
             rkey,
             [](void* ctx) {
-            poll_lock_handler(ctx, start_time);
+            poll_lock_wrapper(ctx, start_time);
         },
             ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);
