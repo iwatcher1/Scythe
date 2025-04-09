@@ -7,6 +7,7 @@
 #include "proto/rdma.h"
 #include "rrpc/rrpc.h"
 #include "util/logging.h"
+#include "tso.h"
 
 DynamicWatermark g_watermark;
 
@@ -15,7 +16,7 @@ LockReply TakeoutLock::Lock(timestamp_t ts, Mode mode) {
   timestamp_t old_queued_ts;
   TakeoutLock tmp;
   //记录开始时间
-  const uint64_t start_time = RdtscTimer::instance().us();
+  const uint64_t start_time = TSO::get_ts();
   //获取当前动态水位值
   const uint32_t current_cold = g_watermark.get_cold();
   const uint32_t current_hot = g_watermark.get_hot();
@@ -39,14 +40,14 @@ LockReply TakeoutLock::Lock(timestamp_t ts, Mode mode) {
   __atomic_fetch_add(&lower, 1, __ATOMIC_RELAXED);
  //记录等待时间用于动态调整
  if(mode == Mode::COLD){
-    g_watermark::update(RdtscTimer::instance().us()-start_time);
+    g_watermark.update(TSO::get_ts()-start_time);
  }
 
   return {true, tmp, reinterpret_cast<uint64_t>(this)};
 }
 //锁状态轮询
 void TakeoutLockProxy::poll_lock() {
-  const uint64_t start_time = RdtscTimer::instance().us();
+  const uint64_t start_time = TSO::get_ts();
 
   auto rkt = GetRocket(0);
   auto *ctx = new PollLockCtx{getShared()};
@@ -54,7 +55,7 @@ void TakeoutLockProxy::poll_lock() {
       rkt->remote_read(&tl.upper, sizeof(uint64_t), lock_addr + OFFSET(TakeoutLock, upper), rkey,
                       [start_time](void* ctx){
                           //回调中记录等待时间
-                          g_watermark.update(RdtscTimer::instance().us()-start_time);
+                          g_watermark.update(TSO::get_ts()-start_time);
                           poll_lock_cb(ctx);                                                                     
       } , ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);

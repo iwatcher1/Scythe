@@ -23,8 +23,8 @@
  */
 // Rocket 中使用了thread local的资源，禁止在线程间共享Rocket
 class Rocket {
- public:
- RDMA_CM_ERROR_CODE remote_read_batch(void** user_bufs, uint32_t* lens, uint64_t* raddrs, uint32_t* rkeys, size_t count, one_side_cb cb, void* args);
+//  public:
+//  RDMA_CM_ERROR_CODE remote_read_batch(void** user_bufs, uint32_t* lens, uint64_t* raddrs, uint32_t* rkeys, size_t count, one_side_cb cb, void* args);
  public:
   static const uint16_t MAX_DOORBELL_BATCH_SIZE = 32;
   static const uint16_t MAX_ONE_SIDE_DOORBELL_BATCH_SIZE = sizeof(uint64_t);

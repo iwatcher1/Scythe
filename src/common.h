@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <atomic>
 
 using timestamp_t = uint64_t;
 using data_t = char;

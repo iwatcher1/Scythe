@@ -11,22 +11,22 @@
 #include "util/mem_pool.h"
 
 //对多个远程内存地址的批量读取
-RDMA_CM_ERROR_CODE Rocket::remote_read_batch(void** user_bufs, uint32_t* lens, uint64_t* raddrs, uint32_t* rkeys, size_t count, one_side_cb cb, void* args) {
-      if (count > MAX_ONE_SIDE_DOORBELL_BATCH_SIZE) {
-          return RDMA_CM_ERROR_CODE::CM_INVALID_PARAM;
-      }
+// RDMA_CM_ERROR_CODE Rocket::remote_read_batch(void** user_bufs, uint32_t* lens, uint64_t* raddrs, uint32_t* rkeys, size_t count, one_side_cb cb, void* args) {
+//       if (count > MAX_ONE_SIDE_DOORBELL_BATCH_SIZE) {
+//           return RDMA_CM_ERROR_CODE::CM_INVALID_PARAM;
+//       }
   
-      // 填充WR数组
-      for (size_t i = 0; i < count; i++) {
-          auto* bag = available_.front();
-          *bag = { .cb = (i == count - 1) ? cb : nullptr, .args = args };  // 仅最后一个回调
-          available_.pop_front();
-          rdma_inflight_.push_back(bag);
-          prepare_one_side_read((uint64_t)user_bufs[i], lens[i], lkey_, raddrs[i], rkeys[i], bag);
-      }
+//       // 填充WR数组
+//       for (size_t i = 0; i < count; i++) {
+//           auto* bag = available_.front();
+//           *bag = { .cb = (i == count - 1) ? cb : nullptr, .args = args };  // 仅最后一个回调
+//           available_.pop_front();
+//           rdma_inflight_.push_back(bag);
+//           prepare_one_side_read((uint64_t)user_bufs[i], lens[i], lkey_, raddrs[i], rkeys[i], bag);
+//       }
   
-      return rdma_burst(true);
-  }
+//       return rdma_burst(true);
+//   }
 
 
 
