@@ -19,12 +19,27 @@ static inline void rt_assert(bool condition, const char *throw_str) {
 }
 
 /// Return the TSC
+// static inline size_t rdtsc() {
+//   uint64_t rax;
+//   uint64_t rdx;
+//   asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
+//   return static_cast<size_t>((rdx << 32) | rax);
+// }
+
 static inline size_t rdtsc() {
-  uint64_t rax;
-  uint64_t rdx;
-  asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
-  return static_cast<size_t>((rdx << 32) | rax);
-}
+  #if defined(__x86_64__)
+      uint32_t rax, rdx;
+      asm volatile("rdtsc" : "=a"(rax), "=d"(rdx));
+      return ((size_t)rdx << 32) | rax;
+  #elif defined(__aarch64__)
+      uint64_t val;
+      asm volatile("mrs %0, cntvct_el0" : "=r"(val));
+      return val;
+  #else
+      // 回退到 chrono
+      return std::chrono::high_resolution_clock::now().time_since_epoch().count();
+  #endif
+  }
 
 static void nano_sleep(size_t ns, double freq_ghz) {
   size_t start = rdtsc();
