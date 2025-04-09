@@ -78,7 +78,7 @@ void TakeoutLockProxy::poll_lock() {
               poll_lock_wrapper(cb->original_ctx, cb->start_time);
               delete cb;
         },
-           cb_ ctx);
+           cb_ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);
 };
 
