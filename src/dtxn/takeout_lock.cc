@@ -63,7 +63,7 @@ void TakeoutLockProxy::poll_lock() {
             rkt->remote_read(&tl.upper, sizeof(uint64_t), 
             lock_addr + OFFSET(TakeoutLock, upper), 
             rkey,
-            [](void* ctx) {
+            [start_time](void* ctx) {
             poll_lock_wrapper(ctx, start_time);
         },
             ctx);
