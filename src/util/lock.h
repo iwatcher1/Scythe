@@ -5,7 +5,13 @@
 #include "common.h"
 #include <atomic>
 #include <cstdint>
-#define cpu_relax() asm volatile("pause\n" : : : "memory")
+#if defined(__x86_64__) || defined(__i386__)
+    #define cpu_relax() asm volatile("pause\n" : : : "memory")  // x86
+#elif defined(__aarch64__)
+    #define cpu_relax() CPU_PAUSE()  // ARM
+#else
+    #define cpu_relax() asm volatile("" : : : "memory")        // 其他平台
+#endif
 /**
  * Reader-Writer latch backed by pthread.h
  */
