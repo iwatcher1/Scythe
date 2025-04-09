@@ -10,6 +10,15 @@
 #include "tso.h"
 
 DynamicWatermark g_watermark;
+// 包含上下文数据的结构体
+struct CallbackContext {
+  void* original_ctx;
+  uint64_t start_time;
+
+  
+  CallbackContext(void* ctx, uint64_t time) 
+  : original_ctx(ctx), start_time(time) {}
+};
 
 //"票号+时间戳"混合排队机制
 LockReply TakeoutLock::Lock(timestamp_t ts, Mode mode) {
@@ -59,14 +68,17 @@ void TakeoutLockProxy::poll_lock() {
 
   auto rkt = GetRocket(0);
   auto *ctx = new PollLockCtx{getShared()};
+  auto cb_ctx = new CallbackContext(ctx, start_time);
   auto rc =
             rkt->remote_read(&tl.upper, sizeof(uint64_t), 
             lock_addr + OFFSET(TakeoutLock, upper), 
             rkey,
-            [start_time](void* ctx) {
-            poll_lock_wrapper(ctx, start_time);
+            [](void* ctx) {
+              auto cb = static_cast<CallbackContext*>(ctx);
+              poll_lock_wrapper(cb->original_ctx, cb->start_time);
+              delete cb;
         },
-            ctx);
+           cb_ ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);
 };
 
