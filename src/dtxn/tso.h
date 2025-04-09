@@ -6,6 +6,10 @@
 #include <fcntl.h>            // 文件控制
 #include <unistd.h>           // close()
 
+// PTP时钟支持
+#ifndef PTP_CLOCK_GETTIME
+#define PTP_CLOCK_GETTIME _IOR('P', 0, struct ptp_clock_time)
+#endif
 
 // 还没实现TSO，这里用rdtsc代替
 //class TSO {
@@ -18,15 +22,22 @@
 
 class TSO {
     public:
-     static timestamp_t get_ts() {
-       struct timespec ts;
-       int fd = open("/dev/ptp0", O_RDWR);  // 打开DPU的PTP设备
-       if (fd < 0) {
-         perror("Failed to open /dev/ptp0");
-         return 0; 
-       }
-       ioctl(fd, PTP_CLOCK_GETTIME, &ts);   // 获取硬件时间
-       close(fd);
-       return static_cast<timestamp_t>(ts.tv_sec) * 1000000000 + ts.tv_nsec;  // 转换为纳秒
-     }
-   };
+        static timestamp_t get_ts() {
+            static int fd = -1;
+            if (fd < 0) {
+                fd = open("/dev/ptp0", O_RDWR);
+            }
+            
+            if (fd >= 0) {
+                struct ptp_clock_time ptp_time;
+                if (ioctl(fd, PTP_CLOCK_GETTIME, &ptp_time) == 0) {
+                    return static_cast<timestamp_t>(ptp_time.sec)*1000000000 + ptp_time.nsec;
+                }
+            }
+            
+            // 回退到系统时钟
+            struct timespec ts;
+            clock_gettime(CLOCK_MONOTONIC, &ts);
+            return static_cast<timestamp_t>(ts.tv_sec)*1000000000 + ts.tv_nsec;
+        }
+    };

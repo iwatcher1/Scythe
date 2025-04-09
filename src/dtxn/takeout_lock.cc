@@ -45,6 +45,14 @@ LockReply TakeoutLock::Lock(timestamp_t ts, Mode mode) {
 
   return {true, tmp, reinterpret_cast<uint64_t>(this)};
 }
+
+
+static void poll_lock_wrapper(void* ctx, uint64_t start_time) {
+  g_watermark.update(TSO::get_ts()-start_time);
+  poll_lock_cb(ctx);
+}
+
+
 //锁状态轮询
 void TakeoutLockProxy::poll_lock() {
   const uint64_t start_time = TSO::get_ts();
@@ -52,12 +60,13 @@ void TakeoutLockProxy::poll_lock() {
   auto rkt = GetRocket(0);
   auto *ctx = new PollLockCtx{getShared()};
   auto rc =
-      rkt->remote_read(&tl.upper, sizeof(uint64_t), lock_addr + OFFSET(TakeoutLock, upper), rkey,
-                      [start_time](void* ctx){
-                          //回调中记录等待时间
-                          g_watermark.update(TSO::get_ts()-start_time);
-                          poll_lock_cb(ctx);                                                                     
-      } , ctx);
+            rkt->remote_read(&tl.upper, sizeof(uint64_t), 
+            lock_addr + OFFSET(TakeoutLock, upper), 
+            rkey,
+            [](void* ctx) {
+            poll_lock_handler(ctx, start_time);
+        },
+            ctx);
   ENSURE(rc == RDMA_CM_ERROR_CODE::CM_SUCCESS, "RDMA read failed, %d", (int)rc);
 };
 
