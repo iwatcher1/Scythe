@@ -24,20 +24,30 @@ class TSO {
     public:
         static timestamp_t get_ts() {
             static int fd = -1;
-            if (fd < 0) {
-                fd = open("/dev/ptp0", O_RDWR);
-            }
+            static bool ptp_available = true; // 标记PTP是否可用
             
-            if (fd >= 0) {
-                struct ptp_clock_time ptp_time;
-                if (ioctl(fd, PTP_CLOCK_GETTIME, &ptp_time) == 0) {
-                    return static_cast<timestamp_t>(ptp_time.sec)*1000000000 + ptp_time.nsec;
+            if (ptp_available && fd < 0) {
+                fd = open("/dev/ptp0", O_RDWR);
+                if (fd < 0) {
+                    perror("Failed to open /dev/ptp0");
+                    ptp_available = false;
                 }
             }
             
-            // 回退到系统时钟
+            if (ptp_available) {
+                struct ptp_clock_time ptp_time = {0};
+                if (ioctl(fd, PTP_CLOCK_GETTIME, &ptp_time) == 0) {
+                    return static_cast<timestamp_t>(ptp_time.sec) * 1000000000 + ptp_time.nsec;
+                }
+                perror("PTP ioctl failed");
+                ptp_available = false; // 禁用后续PTP尝试
+                close(fd);
+                fd = -1;
+            }
+            
+            // Fallback to monotonic clock
             struct timespec ts;
             clock_gettime(CLOCK_MONOTONIC, &ts);
-            return static_cast<timestamp_t>(ts.tv_sec)*1000000000 + ts.tv_nsec;
+            return static_cast<timestamp_t>(ts.tv_sec) * 1000000000 + ts.tv_nsec;
         }
     };
