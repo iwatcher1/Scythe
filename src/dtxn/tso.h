@@ -12,12 +12,12 @@
 #endif
 
 // 还没实现TSO，这里用rdtsc代替
-//class TSO {
-// public:
-//  static timestamp_t get_ts() { return rdtsc(); }
+class TSO {
+public:
+ static timestamp_t get_ts() { return rdtsc(); }
 
-//private:
-//};
+private:
+};
 
 
 // class TSO {
@@ -52,54 +52,54 @@
 //         }
 //     };
 
-#include <iostream>
-#include <cstdio>
-#include <cstring>
-#include <cstdlib>
-#include <unistd.h>
-#include <sys/types.h>
-#include <sys/wait.h>
-#include <ctime>
+// #include <iostream>
+// #include <cstdio>
+// #include <cstring>
+// #include <cstdlib>
+// #include <unistd.h>
+// #include <sys/types.h>
+// #include <sys/wait.h>
+// #include <ctime>
 
-class TSO {
-public:
-    static timestamp_t get_ts() {
-        static bool ptp_available = true; // 标记PTP是否可用
+// class TSO {
+// public:
+//     static timestamp_t get_ts() {
+//         static bool ptp_available = true; // 标记PTP是否可用
 
-        if (ptp_available) {
-            // 使用 pmc 命令获取 PTP 时间
-            FILE *fp = popen("pmc -u -b 0 \"GET TIME_STATUS_NP\"", "r");
-            if (!fp) {
-                perror("Failed to run pmc");
-                ptp_available = false;
-                return fallback_to_monotonic();
-            }
+//         if (ptp_available) {
+//             // 使用 pmc 命令获取 PTP 时间
+//             FILE *fp = popen("pmc -u -b 0 \"GET TIME_STATUS_NP\"", "r");
+//             if (!fp) {
+//                 perror("Failed to run pmc");
+//                 ptp_available = false;
+//                 return fallback_to_monotonic();
+//             }
 
-            char buffer[128];
-            while (fgets(buffer, sizeof(buffer), fp) != NULL) {
-                // 解析输出以获取秒和纳秒
-                if (strstr(buffer, "time")) {
-                    // 假设输出格式为 "time: <sec>.<nsec>"
-                    long sec, nsec;
-                    if (sscanf(buffer, "time: %ld.%ld", &sec, &nsec) == 2) {
-                        pclose(fp);
-                        return static_cast<timestamp_t>(sec) * 1000000000 + nsec;
-                    }
-                }
-            }
+//             char buffer[128];
+//             while (fgets(buffer, sizeof(buffer), fp) != NULL) {
+//                 // 解析输出以获取秒和纳秒
+//                 if (strstr(buffer, "time")) {
+//                     // 假设输出格式为 "time: <sec>.<nsec>"
+//                     long sec, nsec;
+//                     if (sscanf(buffer, "time: %ld.%ld", &sec, &nsec) == 2) {
+//                         pclose(fp);
+//                         return static_cast<timestamp_t>(sec) * 1000000000 + nsec;
+//                     }
+//                 }
+//             }
 
-            pclose(fp);
-            ptp_available = false; // 禁用后续PTP尝试
-        }
+//             pclose(fp);
+//             ptp_available = false; // 禁用后续PTP尝试
+//         }
 
-        // Fallback to monotonic clock
-        return fallback_to_monotonic();
-    }
+//         // Fallback to monotonic clock
+//         return fallback_to_monotonic();
+//     }
 
-private:
-    static timestamp_t fallback_to_monotonic() {
-        struct timespec ts;
-        clock_gettime(CLOCK_MONOTONIC, &ts);
-        return static_cast<timestamp_t>(ts.tv_sec) * 1000000000 + ts.tv_nsec;
-    }
-};
+// private:
+//     static timestamp_t fallback_to_monotonic() {
+//         struct timespec ts;
+//         clock_gettime(CLOCK_MONOTONIC, &ts);
+//         return static_cast<timestamp_t>(ts.tv_sec) * 1000000000 + ts.tv_nsec;
+//     }
+// };
